@@ -14,7 +14,8 @@ import java.util.List;
 /**
  * Gebruikersinterface voor de planner (zie klassendiagram en TO hoofdstuk
  * "Verbinding met de Requirements"). Hier kan de planner orders aanmaken,
- * routes genereren en routes goedkeuren.
+ * routes genereren en routes goedkeuren. Per route is in de tabel zichtbaar
+ * welk tweetal (driver + assistent) is toegewezen.
  */
 public class PlannerUI extends JFrame {
 
@@ -30,7 +31,7 @@ public class PlannerUI extends JFrame {
         this.routeManagement = routeManagement;
         this.onRoutesChanged = onRoutesChanged;
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(900, 600);
+        setSize(1000, 600);
         setLayout(new BorderLayout(8, 8));
 
         // ------- Orders tabel -------
@@ -44,7 +45,8 @@ public class PlannerUI extends JFrame {
 
         // ------- Routes tabel -------
         routeModel = new DefaultTableModel(
-                new String[]{"Route", "Voertuig", "Stops", "Belading (kg)", "Afstand (km)", "Status"}, 0) {
+                new String[]{"Route", "Voertuig", "Driver", "Assistent",
+                             "Stops", "Belading (kg)", "Afstand (km)", "Status"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         routeTable = new JTable(routeModel);
@@ -78,6 +80,7 @@ public class PlannerUI extends JFrame {
         refresh();
     }
 
+    /** Tekent beide tabellen opnieuw op basis van de huidige RouteManagement state. */
     public void refresh() {
         orderModel.setRowCount(0);
         for (Order o : routeManagement.getOrders()) {
@@ -90,8 +93,11 @@ public class PlannerUI extends JFrame {
         }
         routeModel.setRowCount(0);
         for (Route r : routeManagement.getRoutes()) {
+            String driverName  = r.getDriver()    != null ? r.getDriver().getName()    : "-";
+            String assistName  = r.getAssistant() != null ? r.getAssistant().getName() : "-";
             routeModel.addRow(new Object[]{
                     r.getRouteId(), r.getVehicle().getVehicleId(),
+                    driverName, assistName,
                     r.getStops().size(), r.totalWeightKg(),
                     String.format("%.1f", r.getTotalDistanceKm()),
                     r.getStatus()
@@ -99,6 +105,7 @@ public class PlannerUI extends JFrame {
         }
     }
 
+    /** Roept het algoritme aan en geeft het bezorgportaal een seintje. */
     private void generateRoutes() {
         try {
             List<Route> created = routeManagement.generateRoutes();
@@ -114,6 +121,7 @@ public class PlannerUI extends JFrame {
         }
     }
 
+    /** Keurt de in de tabel geselecteerde route goed. */
     private void approveSelectedRoute() {
         int row = routeTable.getSelectedRow();
         if (row < 0) {
@@ -126,6 +134,7 @@ public class PlannerUI extends JFrame {
         if (onRoutesChanged != null) onRoutesChanged.run();
     }
 
+    /** Toont een tekstueel overzicht van de geselecteerde route met alle stops. */
     private void showRouteDetails() {
         int row = routeTable.getSelectedRow();
         if (row < 0) {
@@ -133,10 +142,14 @@ public class PlannerUI extends JFrame {
             return;
         }
         Route route = routeManagement.getRoutes().get(row);
+        String driverName  = route.getDriver()    != null ? route.getDriver().getName()    : "-";
+        String assistName  = route.getAssistant() != null ? route.getAssistant().getName() : "-";
+
         StringBuilder sb = new StringBuilder();
         sb.append("Route ").append(route.getRouteId()).append("\n");
         sb.append("Voertuig: ").append(route.getVehicle()).append("\n");
-        sb.append("Bezorger(s): ").append(route.getDeliverers()).append("\n");
+        sb.append("Driver: ").append(driverName).append("\n");
+        sb.append("Assistent: ").append(assistName).append("\n");
         sb.append("Start: ").append(route.formattedStart()).append("\n\n");
         sb.append("Stops:\n");
         for (Stop s : route.getStops()) {
@@ -151,6 +164,7 @@ public class PlannerUI extends JFrame {
                 "Route details", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /** Dialog om handmatig een nieuwe order in te voeren (handig voor demo's). */
     private void showAddOrderDialog() {
         JTextField idField = new JTextField("ORD-" + (routeManagement.getOrders().size() + 1));
         JTextField customerField = new JTextField("KLANT-X");
@@ -196,11 +210,13 @@ public class PlannerUI extends JFrame {
         }
     }
 
+    /** Helper: HH:mm -> minuten sinds 00:00. */
     private int parseTime(String s) {
         String[] parts = s.split(":");
         return Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);
     }
 
+    /** Helper: minuten sinds 00:00 -> HH:mm. */
     private String formatTime(int minutes) {
         return String.format("%02d:%02d", minutes / 60, minutes % 60);
     }

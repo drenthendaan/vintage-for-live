@@ -26,11 +26,14 @@ public class Stop {
     public int getEta() { return eta; }
     public void setEta(int eta) { this.eta = eta; }
     public boolean isCompleted() { return completed; }
+
+    /** Markeer de stop als afgerond; markeert tegelijk de bijbehorende order als bezorgd. */
     public void markCompleted() {
         this.completed = true;
         this.order.markDelivered();
     }
 
+    /** Helper: ETA als leesbare HH:mm string. */
     public String formattedEta() {
         return String.format("%02d:%02d", eta / 60, eta % 60);
     }

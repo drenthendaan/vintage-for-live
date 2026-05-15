@@ -4,13 +4,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * De bezorger. Verantwoordelijk voor de praktische uitvoering van leveringen.
- * Kan zijn toegewezen routes opvragen.
+ * Een medewerker uit het bezorgteam. Kan als driver (chauffeur) of als
+ * assistent (bijrijder) aan een route worden gekoppeld. Bij Vintage for Life
+ * rijdt er altijd een tweetal mee: de driver bestuurt het busje en de
+ * assistent helpt met sjouwen en installatie.
  */
 public class Deliverer {
     private final String delivererId;
     private final String name;
-    private final List<Route> assignedRoutes = new ArrayList<>();
+    private final List<Route> drivenRoutes = new ArrayList<>();
+    private final List<Route> assistedRoutes = new ArrayList<>();
 
     public Deliverer(String delivererId, String name) {
         this.delivererId = delivererId;
@@ -20,11 +23,31 @@ public class Deliverer {
     public String getDelivererId() { return delivererId; }
     public String getName() { return name; }
 
-    public List<Route> getAssignedRoutes() { return assignedRoutes; }
+    /** Alle routes waar deze persoon als driver op staat. */
+    public List<Route> getDrivenRoutes() { return drivenRoutes; }
 
-    public void assignRoute(Route route) {
-        assignedRoutes.add(route);
-        route.addDeliverer(this);
+    /** Alle routes waar deze persoon als assistent op staat. */
+    public List<Route> getAssistedRoutes() { return assistedRoutes; }
+
+    /** Alle routes waar deze persoon bij betrokken is (driver of assistent). */
+    public List<Route> getAssignedRoutes() {
+        List<Route> all = new ArrayList<>(drivenRoutes);
+        for (Route r : assistedRoutes) {
+            if (!all.contains(r)) all.add(r);
+        }
+        return all;
+    }
+
+    /** Koppel deze persoon als driver aan de route. */
+    public void assignAsDriver(Route route) {
+        if (!drivenRoutes.contains(route)) drivenRoutes.add(route);
+        route.setDriver(this);
+    }
+
+    /** Koppel deze persoon als assistent aan de route. */
+    public void assignAsAssistant(Route route) {
+        if (!assistedRoutes.contains(route)) assistedRoutes.add(route);
+        route.setAssistant(this);
     }
 
     @Override

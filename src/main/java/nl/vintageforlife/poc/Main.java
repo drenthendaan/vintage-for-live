@@ -12,7 +12,7 @@ import javax.swing.SwingUtilities;
 
 /**
  * Startpunt van de PoC. Laadt voorbeelddata (Zwolle e.o.) en opent beide
- * portalen naast elkaar.
+ * portalen naast elkaar: het Planner Portal en het Bezorger Portal.
  */
 public class Main {
 
@@ -22,6 +22,7 @@ public class Main {
             DelivererUI deliverer = new DelivererUI(rm);
             PlannerUI planner = new PlannerUI(rm, deliverer::onRoutesChanged);
 
+            // Planner links, Bezorger rechts.
             planner.setLocation(50, 80);
             deliverer.setLocation(1000, 80);
             planner.setVisible(true);
@@ -29,6 +30,7 @@ public class Main {
         });
     }
 
+    /** Bouwt een voorbeeld-dataset op: depot, voertuigen, medewerkers en orders. */
     private static RouteManagement setupSampleData() {
         RouteManagement rm = new RouteManagement();
 
@@ -41,11 +43,15 @@ public class Main {
         rm.addVehicle(new Vehicle("BUS-01", 500, depot));
         rm.addVehicle(new Vehicle("BUS-02", 500, depot));
 
-        // Twee bezorgers.
-        rm.addDeliverer(new Deliverer("D-01", "Bezorger Bram"));
-        rm.addDeliverer(new Deliverer("D-02", "Bezorger Sanne"));
+        // Vier medewerkers: genoeg voor twee routes met elk een
+        // driver + assistent. De rolverdeling per route gebeurt in
+        // RouteManagement.generateRoutes().
+        rm.addDeliverer(new Deliverer("D-01", "Bram"));
+        rm.addDeliverer(new Deliverer("D-02", "Sanne"));
+        rm.addDeliverer(new Deliverer("D-03", "Joris"));
+        rm.addDeliverer(new Deliverer("D-04", "Lotte"));
 
-        // Vijf voorbeeldorders rondom Zwolle.
+        // Zes voorbeeldorders rondom Zwolle.
         rm.addOrder(new Order("ORD-1", "K-101",
                 new Location("Veerallee 12, Zwolle", 52.5151, 6.0796),
                 9 * 60, 12 * 60, 35, false));

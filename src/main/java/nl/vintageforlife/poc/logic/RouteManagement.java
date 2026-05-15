@@ -12,9 +12,13 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Centrale planningsklasse. Verzamelt orders, voertuigen en bezorgers,
+ * Centrale planningsklasse. Verzamelt orders, voertuigen en medewerkers,
  * roept het algoritme aan en bouwt daaruit Route-objecten met Stops.
  * Een planner kan een gegenereerde route hier ook goedkeuren.
+ *
+ * Bij Vintage for Life rijdt er altijd een tweetal mee: een driver en een
+ * assistent. Tijdens het genereren worden deze rollen automatisch aan een
+ * route toegewezen op basis van de beschikbare medewerkers.
  */
 public class RouteManagement {
 
@@ -24,7 +28,8 @@ public class RouteManagement {
     private final List<Deliverer> deliverers = new ArrayList<>();
     private final List<Route> routes = new ArrayList<>();
     private Location depot;
-    private int dayStartMinutes = 8 * 60;  // standaard 08:00
+    /** Standaard dagstart in minuten sinds 00:00 (default 08:00). */
+    private int dayStartMinutes = 8 * 60;
     private int routeSequence = 1;
     private int stopSequence = 1;
 
@@ -43,6 +48,8 @@ public class RouteManagement {
     /**
      * Genereert routes op basis van alle open orders. Bestaande
      * niet-goedgekeurde routes worden weggegooid en opnieuw berekend.
+     * Elke route krijgt automatisch een driver en een assistent toegewezen
+     * zolang er genoeg medewerkers beschikbaar zijn.
      */
     public List<Route> generateRoutes() {
         if (depot == null) {
@@ -63,12 +70,16 @@ public class RouteManagement {
                 algorithm.solve(vehicles, openOrders, depot, dayStartMinutes);
 
         List<Route> newRoutes = new ArrayList<>();
-        Iterator<Deliverer> delivererCycle = deliverers.iterator();
+        // Iterator over alle beschikbare medewerkers; we koppelen er per route
+        // twee aan vast (driver + assistent).
+        Iterator<Deliverer> crewCycle = deliverers.iterator();
 
         for (DeliveryAlgorithm.PlannedRoute pr : result.plannedRoutes) {
             Route route = new Route("R-" + routeSequence++, pr.vehicle, dayStartMinutes);
             route.setTotalDistanceKm(pr.distanceKm);
 
+            // Loop de geplande stops door en bereken ETA's op basis van
+            // hemelsbrede afstand en 50 km/u (zie DeliveryAlgorithm).
             int seq = 1;
             int currentTime = dayStartMinutes;
             Location prevLoc = depot;
@@ -84,9 +95,12 @@ public class RouteManagement {
                 prevLoc = o.getAddress();
             }
 
-            // Wijs (indien beschikbaar) een bezorger toe.
-            if (delivererCycle.hasNext()) {
-                delivererCycle.next().assignRoute(route);
+            // Wijs (indien beschikbaar) een driver en assistent toe.
+            if (crewCycle.hasNext()) {
+                crewCycle.next().assignAsDriver(route);
+            }
+            if (crewCycle.hasNext()) {
+                crewCycle.next().assignAsAssistant(route);
             }
             newRoutes.add(route);
             routes.add(route);
@@ -94,6 +108,7 @@ public class RouteManagement {
         return newRoutes;
     }
 
+    /** Helper: zit de order al in een actieve (niet-concept) route? */
     private boolean isInExistingRoute(Order o) {
         for (Route r : routes) {
             if (r.getStatus() == Route.Status.CONCEPT) continue;

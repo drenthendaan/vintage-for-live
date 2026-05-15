@@ -45,6 +45,7 @@ public class Order {
         return requiresInstallation ? 45 : 15;
     }
 
+    /** Helper: minuten sinds 00:00 -> HH:mm. */
     private String formatTime(int minutes) {
         return String.format("%02d:%02d", minutes / 60, minutes % 60);
     }
