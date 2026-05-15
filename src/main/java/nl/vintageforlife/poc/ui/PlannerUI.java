@@ -36,19 +36,19 @@ public class PlannerUI extends JFrame {
 
         // ------- Orders table -------
         orderModel = new DefaultTableModel(
-                new String[]{"Order", "Klant", "Adres", "Tijdvenster", "Kg", "Installatie"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
+                new String[]{"Order", "Klant", "Adres", "Tijdvenster", "Kg", "Installatie"},
+                0
+        ) { @Override public boolean isCellEditable(int r, int c) { return false; } };
         JTable orderTable = new JTable(orderModel);
         JScrollPane orderScroll = new JScrollPane(orderTable);
         orderScroll.setBorder(BorderFactory.createTitledBorder("Orders"));
 
         // ------- Routes table -------
         routeModel = new DefaultTableModel(
-                new String[]{"Route", "Dag", "Voertuig", "Driver", "Assistent",
-                             "Stops", "Belading (kg)", "Afstand (km)", "Status"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
+                new String[]{"Route", "Dag", "Voertuig", "Driver", "Assistent", "Stops", "Belading (kg)", "Afstand (km)", "Status"},
+                0
+        ) { @Override public boolean isCellEditable(int r, int c) { return false; } };
+
         routeTable = new JTable(routeModel);
         JScrollPane routeScroll = new JScrollPane(routeTable);
         routeScroll.setBorder(BorderFactory.createTitledBorder("Routes"));
@@ -61,20 +61,20 @@ public class PlannerUI extends JFrame {
         JButton addOrderBtn = new JButton("Order toevoegen");
         addOrderBtn.addActionListener(e -> showAddOrderDialog());
 
-        JButton genBtn = new JButton("Routes genereren");
-        genBtn.addActionListener(e -> generateRoutes());
+        JButton routeGenerateBtn = new JButton("Routes genereren");
+        routeGenerateBtn.addActionListener(e -> generateRoutes());
 
-        JButton approveBtn = new JButton("Geselecteerde route goedkeuren");
-        approveBtn.addActionListener(e -> approveSelectedRoute());
+        JButton approveRouteBtn = new JButton("Geselecteerde route goedkeuren");
+        approveRouteBtn.addActionListener(e -> approveSelectedRoute());
 
-        JButton detailBtn = new JButton("Route details bekijken");
-        detailBtn.addActionListener(e -> showRouteDetails());
+        JButton routeDetailBtn = new JButton("Route details bekijken");
+        routeDetailBtn.addActionListener(e -> showRouteDetails());
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttons.add(addOrderBtn);
-        buttons.add(genBtn);
-        buttons.add(approveBtn);
-        buttons.add(detailBtn);
+        buttons.add(routeGenerateBtn);
+        buttons.add(approveRouteBtn);
+        buttons.add(routeDetailBtn);
         add(buttons, BorderLayout.SOUTH);
 
         refresh();
@@ -83,25 +83,25 @@ public class PlannerUI extends JFrame {
     /** Redraws both tables based on the current RouteManagement state. */
     public void refresh() {
         orderModel.setRowCount(0);
-        for (Order o : routeManagement.getOrders()) {
+        for (Order order: routeManagement.getOrders()) {
             orderModel.addRow(new Object[]{
-                    o.getOrderId(), o.getCustomerId(), o.getAddress().getAddress(),
-                    formatTime(o.getTimeWindowStart()) + "-" + formatTime(o.getTimeWindowEnd()),
-                    o.getWeightKg(),
-                    o.requiresInstallation() ? "ja" : "nee"
+                    order.getOrderId(), order.getCustomerId(), order.getAddress().getAddress(),
+                    formatTime(order.getTimeWindowStart()) + "-" + formatTime(order.getTimeWindowEnd()),
+                    order.getWeightKg(),
+                    order.requiresInstallation() ? "ja" : "nee"
             });
         }
         routeModel.setRowCount(0);
-        for (Route r : routeManagement.getRoutes()) {
-            String driverName  = r.getDriver()    != null ? r.getDriver().getName()    : "-";
-            String assistName  = r.getAssistant() != null ? r.getAssistant().getName() : "-";
+        for (Route route: routeManagement.getRoutes()) {
+            String driverName  = route.getDriver()    != null ? route.getDriver().getName()    : "-";
+            String assistName  = route.getAssistant() != null ? route.getAssistant().getName() : "-";
             routeModel.addRow(new Object[]{
-                    r.getRouteId(), r.formattedDay(),
-                    r.getVehicle().getVehicleId(),
+                    route.getRouteId(), route.formattedDay(),
+                    route.getVehicle().getVehicleId(),
                     driverName, assistName,
-                    r.getStops().size(), r.totalWeightKg(),
-                    String.format("%.1f", r.getTotalDistanceKm()),
-                    r.getStatus()
+                    route.getStops().size(), route.totalWeightKg(),
+                    String.format("%.1f", route.getTotalDistanceKm()),
+                    route.getStatus()
             });
         }
     }
@@ -144,26 +144,25 @@ public class PlannerUI extends JFrame {
         }
         Route route = routeManagement.getRoutes().get(row);
         String driverName  = route.getDriver()    != null ? route.getDriver().getName()    : "-";
-        String assistName  = route.getAssistant() != null ? route.getAssistant().getName() : "-";
+        String assistantName  = route.getAssistant() != null ? route.getAssistant().getName() : "-";
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("Route ").append(route.getRouteId()).append("\n");
-        sb.append("Dag: ").append(route.formattedDay()).append("\n");
-        sb.append("Voertuig: ").append(route.getVehicle()).append("\n");
-        sb.append("Driver: ").append(driverName).append("\n");
-        sb.append("Assistent: ").append(assistName).append("\n");
-        sb.append("Start: ").append(route.formattedStart()).append("\n\n");
-        sb.append("Stops:\n");
-        for (Stop s : route.getStops()) {
-            sb.append(" ").append(s.getSequence()).append(". ")
-              .append(s.formattedEta()).append(" - ")
-              .append(s.getOrder().getOrderId()).append(" @ ")
-              .append(s.getOrder().getAddress()).append("\n");
+        StringBuilder stringbuilder = new StringBuilder();
+        stringbuilder.append("Route ").append(route.getRouteId()).append("\n");
+        stringbuilder.append("Dag: ").append(route.formattedDay()).append("\n");
+        stringbuilder.append("Voertuig: ").append(route.getVehicle()).append("\n");
+        stringbuilder.append("Driver: ").append(driverName).append("\n");
+        stringbuilder.append("Assistent: ").append(assistantName).append("\n");
+        stringbuilder.append("Start: ").append(route.formattedStart()).append("\n\n");
+        stringbuilder.append("Stops:\n");
+        for (Stop stop: route.getStops()) {
+            stringbuilder.append(" ").append(stop.getSequence()).append(". ")
+              .append(stop.formattedEta()).append(" - ")
+              .append(stop.getOrder().getOrderId()).append(" @ ")
+              .append(stop.getOrder().getAddress()).append("\n");
         }
-        JTextArea ta = new JTextArea(sb.toString());
-        ta.setEditable(false);
-        JOptionPane.showMessageDialog(this, new JScrollPane(ta),
-                "Route details", JOptionPane.INFORMATION_MESSAGE);
+        JTextArea textArea = new JTextArea(stringbuilder.toString());
+        textArea.setEditable(false);
+        JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Route details", JOptionPane.INFORMATION_MESSAGE);
     }
 
     /** Dialog for adding a new order by hand (handy for demos). */
@@ -173,38 +172,46 @@ public class PlannerUI extends JFrame {
         JTextField addressField = new JTextField("Voorbeeldstraat 1, Zwolle");
         JTextField latField = new JTextField("52.5125");
         JTextField lonField = new JTextField("6.0944");
-        JTextField twStartField = new JTextField("09:00");
-        JTextField twEndField = new JTextField("17:00");
+        JTextField timeWindowStartField = new JTextField("09:00");
+        JTextField timeWindowEndField = new JTextField("17:00");
         JTextField weightField = new JTextField("20");
         JCheckBox installCheck = new JCheckBox("Installatie nodig (+30 min)");
 
         JPanel panel = new JPanel(new GridLayout(0, 2, 4, 4));
-        panel.add(new JLabel("Order ID:"));        panel.add(idField);
-        panel.add(new JLabel("Klant ID:"));        panel.add(customerField);
-        panel.add(new JLabel("Adres:"));           panel.add(addressField);
-        panel.add(new JLabel("Latitude:"));        panel.add(latField);
-        panel.add(new JLabel("Longitude:"));       panel.add(lonField);
-        panel.add(new JLabel("Tijdvenster start (HH:mm):")); panel.add(twStartField);
-        panel.add(new JLabel("Tijdvenster eind (HH:mm):"));  panel.add(twEndField);
-        panel.add(new JLabel("Gewicht (kg):"));    panel.add(weightField);
-        panel.add(new JLabel(""));                 panel.add(installCheck);
+        panel.add(new JLabel("Order ID:"));
+        panel.add(idField);
+        panel.add(new JLabel("Klant ID:"));
+        panel.add(customerField);
+        panel.add(new JLabel("Adres:"));
+        panel.add(addressField);
+        panel.add(new JLabel("Latitude:"));
+        panel.add(latField);
+        panel.add(new JLabel("Longitude:"));
+        panel.add(lonField);
+        panel.add(new JLabel("Tijdvenster start (HH:mm):"));
+        panel.add(timeWindowStartField);
+        panel.add(new JLabel("Tijdvenster eind (HH:mm):"));
+        panel.add(timeWindowEndField);
+        panel.add(new JLabel("Gewicht (kg):"));
+        panel.add(weightField);
+        panel.add(new JLabel(""));
+        panel.add(installCheck);
 
-        int result = JOptionPane.showConfirmDialog(this, panel,
-                "Nieuwe order", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        int result = JOptionPane.showConfirmDialog(this, panel, "Nieuwe order", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) return;
 
         try {
-            Order o = new Order(
+            Order order = new Order(
                     idField.getText().trim(),
                     customerField.getText().trim(),
                     new Location(addressField.getText().trim(),
                             Double.parseDouble(latField.getText().trim()),
                             Double.parseDouble(lonField.getText().trim())),
-                    parseTime(twStartField.getText().trim()),
-                    parseTime(twEndField.getText().trim()),
+                    parseTime(timeWindowStartField.getText().trim()),
+                    parseTime(timeWindowEndField.getText().trim()),
                     Integer.parseInt(weightField.getText().trim()),
                     installCheck.isSelected());
-            routeManagement.addOrder(o);
+            routeManagement.addOrder(order);
             refresh();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Ongeldige invoer: " + ex.getMessage(),

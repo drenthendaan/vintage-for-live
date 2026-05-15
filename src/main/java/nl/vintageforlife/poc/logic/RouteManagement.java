@@ -41,9 +41,9 @@ public class RouteManagement {
     public List<Deliverer> getDeliverers() { return deliverers; }
     public List<Route> getRoutes() { return routes; }
 
-    public void addOrder(Order o) { orders.add(o); }
-    public void addVehicle(Vehicle v) { vehicles.add(v); }
-    public void addDeliverer(Deliverer d) { deliverers.add(d); }
+    public void addOrder(Order order) { orders.add(order); }
+    public void addVehicle(Vehicle vehicle) { vehicles.add(vehicle); }
+    public void addDeliverer(Deliverer deliverer) { deliverers.add(deliverer); }
 
     /**
      * Generates routes from all open orders. Existing concept (not yet
@@ -59,43 +59,44 @@ public class RouteManagement {
             throw new IllegalStateException("Depot is niet ingesteld.");
         }
         // Remove old concepts; approved routes are left untouched.
-        routes.removeIf(r -> r.getStatus() == Route.Status.CONCEPT);
+        routes.removeIf(route -> route.getStatus() == Route.Status.CONCEPT);
 
         List<Order> openOrders = new ArrayList<>();
-        for (Order o : orders) {
-            if (!o.isDelivered() && !isInExistingRoute(o)) {
-                openOrders.add(o);
+        for (Order order: orders) {
+            if (!order.isDelivered() && !isInExistingRoute(order)) {
+                openOrders.add(order);
             }
         }
-        if (openOrders.isEmpty()) return new ArrayList<>();
+         if (openOrders.isEmpty()) return new ArrayList<>();
 
         DeliveryAlgorithm.RoutingResult result =
                 algorithm.solve(vehicles, openOrders, depot, dayStartMinutes);
 
         List<Route> newRoutes = new ArrayList<>();
         // Crew capacity: how many driver+assistant pairs fit in a single day.
-        int pairsPerDay = deliverers.size() / 2;
+        int pairsPerDay= deliverers.size() / 2;
 
         int routeIndex = 0;
-        for (DeliveryAlgorithm.PlannedRoute pr : result.plannedRoutes) {
-            Route route = new Route("R-" + routeSequence++, pr.vehicle, dayStartMinutes);
-            route.setTotalDistanceKm(pr.distanceKm);
+        for (DeliveryAlgorithm.PlannedRoute plannedRoute: result.plannedRoutes) {
+            Route route = new Route("R-" + routeSequence++, plannedRoute.vehicle, dayStartMinutes);
+            route.setTotalDistanceKm(plannedRoute.distanceKm);
 
             // Walk through the planned stops and compute ETAs based on
             // crow-flies distance and 50 km/h (see DeliveryAlgorithm).
-            int seq = 1;
+            int sequence = 1;
             int currentTime = dayStartMinutes;
-            Location prevLoc = depot;
-            for (Order o : pr.orderedOrders) {
-                int travel = (int) Math.round(prevLoc.distanceKm(o.getAddress()) / 50.0 * 60.0);
+            Location prevLocation = depot;
+
+            for (Order order: plannedRoute.orderedOrders) {
+                int travel = (int) Math.round(prevLocation.distanceKm(order.getAddress()) / 50.0 * 60.0);
                 currentTime += travel;
-                if (currentTime < o.getTimeWindowStart()) {
-                    currentTime = o.getTimeWindowStart();  // wait for the time window
+                if (currentTime < order.getTimeWindowStart()) {
+                    currentTime = order.getTimeWindowStart();  // wait for the time window
                 }
-                Stop stop = new Stop("S-" + stopSequence++, seq++, o, currentTime);
+                Stop stop = new Stop("S-" + stopSequence++, sequence++, order, currentTime);
                 route.addStop(stop);
-                currentTime += o.getServiceMinutes();
-                prevLoc = o.getAddress();
+                currentTime += order.getServiceMinutes();
+                prevLocation = order.getAddress();
             }
 
             // Determine the date and the crew pair for this route.
@@ -119,11 +120,11 @@ public class RouteManagement {
     }
 
     /** Helper: is the order already part of an active (non-concept) route? */
-    private boolean isInExistingRoute(Order o) {
-        for (Route r : routes) {
-            if (r.getStatus() == Route.Status.CONCEPT) continue;
-            for (Stop s : r.getStops()) {
-                if (s.getOrder() == o) return true;
+    private boolean isInExistingRoute(Order order) {
+        for (Route route: routes) {
+            if (route.getStatus() == Route.Status.CONCEPT) continue;
+            for (Stop stop: route.getStops()) {
+                if (stop.getOrder() == order) return true;
             }
         }
         return false;
