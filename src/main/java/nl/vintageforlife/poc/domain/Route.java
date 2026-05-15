@@ -28,8 +28,8 @@ public class Route {
     private final List<Stop> stops = new ArrayList<>();
     /** Planned start time in minutes since 00:00. */
     private int plannedStart;
-    /** Day offset relative to today (0 = today, 1 = tomorrow, ...). */
-    private int dayOffset;
+    /** Planned date on which this route should be driven. */
+    private LocalDate plannedDate = LocalDate.now();
     private double totalDistanceKm;
     private Status status = Status.CONCEPT;
 
@@ -58,8 +58,8 @@ public class Route {
 
     public List<Stop> getStops() { return stops; }
     public int getPlannedStart() { return plannedStart; }
-    public int getDayOffset() { return dayOffset; }
-    public void setDayOffset(int dayOffset) { this.dayOffset = dayOffset; }
+    public LocalDate getPlannedDate() { return plannedDate; }
+    public void setPlannedDate(LocalDate plannedDate) { this.plannedDate = plannedDate; }
     public double getTotalDistanceKm() { return totalDistanceKm; }
     public void setTotalDistanceKm(double km) { this.totalDistanceKm = km; }
     public Status getStatus() { return status; }
@@ -75,14 +75,9 @@ public class Route {
         return String.format("%02d:%02d", plannedStart / 60, plannedStart % 60);
     }
 
-    /** Planned date for this route, relative to today's date. */
-    public LocalDate getPlannedDate() {
-        return LocalDate.now().plusDays(dayOffset);
-    }
-
     /** Human-readable date label, e.g. "vr 15 mei 2026". */
     public String formattedDay() {
-        return DAY_FORMAT.format(getPlannedDate());
+        return DAY_FORMAT.format(plannedDate);
     }
 
     @Override

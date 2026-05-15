@@ -7,6 +7,7 @@ import nl.vintageforlife.poc.domain.Route;
 import nl.vintageforlife.poc.domain.Stop;
 import nl.vintageforlife.poc.domain.Vehicle;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -97,15 +98,15 @@ public class RouteManagement {
                 prevLoc = o.getAddress();
             }
 
-            // Determine the day and the crew pair for this route.
+            // Determine the date and the crew pair for this route.
             // pairsPerDay == 0 means we have no crew at all; in that case
-            // every route stays on day 0 without crew assigned.
+            // every route stays on today's date without crew assigned.
             if (pairsPerDay > 0) {
                 int day = routeIndex / pairsPerDay;
                 int pairSlot = routeIndex % pairsPerDay;
                 Deliverer driver    = deliverers.get(pairSlot * 2);
                 Deliverer assistant = deliverers.get(pairSlot * 2 + 1);
-                route.setDayOffset(day);
+                route.setPlannedDate(LocalDate.now().plusDays(day));
                 driver.assignAsDriver(route);
                 assistant.assignAsAssistant(route);
             }
