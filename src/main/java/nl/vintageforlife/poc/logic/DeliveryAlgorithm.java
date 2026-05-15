@@ -24,21 +24,21 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Wrapper rond Jsprit (zie TO hoofdstuk "Gekozen algoritme"). Bouwt een
- * VehicleRoutingProblem op met onze domeinobjecten, lost het op en geeft
- * het resultaat terug als plain Java object.
+ * Wrapper around Jsprit (see the technical design, chapter "Chosen
+ * algorithm"). Builds a VehicleRoutingProblem from our domain objects,
+ * solves it and returns the result as a plain Java object.
  *
- * In productie zou de cost matrix gevuld worden met GraphHopper rijafstanden;
- * in deze PoC gebruiken we hemelsbreed (haversine) op basis van 50 km/u.
+ * In production the cost matrix would be filled with GraphHopper driving
+ * distances; in this PoC we use crow-flies (haversine) distances at 50 km/h.
  */
 public class DeliveryAlgorithm {
 
-    /** Gemiddelde rijsnelheid voor de PoC (km/u). */
+    /** Average driving speed for the PoC (km/h). */
     private static final double AVG_SPEED_KMH = 50.0;
-    /** Vaste id voor de depot-locatie in de Jsprit cost matrix. */
+    /** Fixed id for the depot location in the Jsprit cost matrix. */
     private static final String DEPOT_ID = "depot";
 
-    /** Eén geplande rit voor één voertuig. */
+    /** A single planned trip for one vehicle. */
     public static class PlannedRoute {
         public final Vehicle vehicle;
         public final List<Order> orderedOrders;
@@ -51,7 +51,7 @@ public class DeliveryAlgorithm {
         }
     }
 
-    /** Resultaat van een routeberekening (alle ritten + niet-toegewezen orders). */
+    /** Result of a route calculation (all trips + any unassigned orders). */
     public static class RoutingResult {
         public final List<PlannedRoute> plannedRoutes;
         public final List<Order> unassigned;
@@ -66,14 +66,14 @@ public class DeliveryAlgorithm {
     }
 
     /**
-     * Lost het routeprobleem op voor de gegeven voertuigen, orders en depot.
-     * Het resultaat is per voertuig een lijst van orders in de optimale
-     * volgorde, plus de eventuele orders die niet toegewezen konden worden.
+     * Solves the routing problem for the given vehicles, orders and depot.
+     * The result is, per vehicle, a list of orders in the optimal sequence,
+     * plus any orders that could not be assigned.
      */
     public RoutingResult solve(List<Vehicle> vehicles, List<Order> orders,
                                Location depot, int dayStartMinutes) {
 
-        // 1. Bouw cost matrix met haversine afstanden tussen alle locaties.
+        // 1. Build a cost matrix with haversine distances between all locations.
         Map<String, Location> locById = new HashMap<>();
         locById.put(DEPOT_ID, depot);
         for (Order o : orders) {
@@ -95,7 +95,7 @@ public class DeliveryAlgorithm {
         }
         VehicleRoutingTransportCostsMatrix costs = matrixBuilder.build();
 
-        // 2. Bouw VRP-probleem: vertaal voertuigen en orders naar Jsprit-objecten.
+        // 2. Build the VRP problem: translate vehicles and orders into Jsprit objects.
         VehicleRoutingProblem.Builder vrpBuilder = VehicleRoutingProblem.Builder.newInstance();
         vrpBuilder.setRoutingCost(costs);
 
@@ -112,7 +112,7 @@ public class DeliveryAlgorithm {
                     .setStartLocation(depotLoc)
                     .setType(type)
                     .setEarliestStart(dayStartMinutes)
-                    .setLatestArrival(dayStartMinutes + 8 * 60)  // 8-uurs werkdag (UR-10)
+                    .setLatestArrival(dayStartMinutes + 8 * 60)  // 8-hour workday (UR-10)
                     .build();
             vrpBuilder.addVehicle(jVehicle);
         }
@@ -124,7 +124,7 @@ public class DeliveryAlgorithm {
                     com.graphhopper.jsprit.core.problem.Location.Builder.newInstance()
                             .setId(o.getOrderId()).build();
             Service service = Service.Builder.newInstance(o.getOrderId())
-                    .addSizeDimension(0, o.getWeightKg())   // FR-8 capaciteit
+                    .addSizeDimension(0, o.getWeightKg())   // FR-8 capacity
                     .setLocation(stopLoc)
                     .setServiceTime(o.getServiceMinutes()) // UR-21
                     .setTimeWindow(TimeWindow.newInstance( // UR-11
@@ -135,13 +135,13 @@ public class DeliveryAlgorithm {
 
         VehicleRoutingProblem vrp = vrpBuilder.build();
 
-        // 3. Los op met Jsprit (ruin & recreate). 200 iteraties is voldoende
-        //    voor de PoC en blijft ruim binnen UR-24 (route binnen 1 min).
+        // 3. Solve with Jsprit (ruin & recreate). 200 iterations is plenty
+        //    for the PoC and stays well within UR-24 (route within 1 min).
         VehicleRoutingAlgorithm algo = Jsprit.createAlgorithm(vrp);
         algo.setMaxIterations(200);
         VehicleRoutingProblemSolution best = Solutions.bestOf(algo.searchSolutions());
 
-        // 4. Vertaal het Jsprit-resultaat terug naar onze domain-objecten.
+        // 4. Translate the Jsprit result back into our domain objects.
         List<PlannedRoute> planned = new ArrayList<>();
         for (VehicleRoute jRoute : best.getRoutes()) {
             if (jRoute.getActivities().isEmpty()) continue;
@@ -166,7 +166,7 @@ public class DeliveryAlgorithm {
         return new RoutingResult(planned, unassigned, total);
     }
 
-    /** Helper: totale afstand van depot, langs alle activiteiten, terug naar depot. */
+    /** Helper: total distance from the depot, along all activities, back to the depot. */
     private double routeDistanceKm(VehicleRoute jRoute, Map<String, Location> locById) {
         double km = 0;
         Location prev = locById.get(DEPOT_ID);
@@ -177,7 +177,7 @@ public class DeliveryAlgorithm {
                 prev = curr;
             }
         }
-        // Retour naar depot.
+        // Return trip to the depot.
         km += prev.distanceKm(locById.get(DEPOT_ID));
         return km;
     }

@@ -1,12 +1,12 @@
 package nl.vintageforlife.poc.domain;
 
 /**
- * Een bezorgvoertuig. Bevat id, laadcapaciteit (kg) en startlocatie (depot).
- * Komt overeen met de Vehicle-class uit het klassendiagram (FR-8 capaciteit).
+ * A delivery vehicle. Holds id, load capacity (kg) and start location
+ * (depot). Matches the Vehicle class from the class diagram (FR-8 capacity).
  */
 public class Vehicle {
     private final String vehicleId;
-    /** Maximale laadcapaciteit in kilogram (FR-8, UR-20). */
+    /** Maximum load capacity in kilograms (FR-8, UR-20). */
     private final int capacityKg;
     private final Location startLocation;
 

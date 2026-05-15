@@ -1,14 +1,14 @@
 package nl.vintageforlife.poc.domain;
 
 /**
- * Een aflevermoment binnen een route. Heeft een volgnummer en is gekoppeld
- * aan exact één Order (zie klassendiagram).
+ * A single delivery moment within a route. Has a sequence number and is
+ * linked to exactly one Order (see class diagram).
  */
 public class Stop {
     private final String stopId;
     private final int sequence;
     private final Order order;
-    /** Verwachte aankomsttijd in minuten sinds 00:00. */
+    /** Expected time of arrival in minutes since 00:00. */
     private int eta;
     private boolean completed;
 
@@ -27,13 +27,13 @@ public class Stop {
     public void setEta(int eta) { this.eta = eta; }
     public boolean isCompleted() { return completed; }
 
-    /** Markeer de stop als afgerond; markeert tegelijk de bijbehorende order als bezorgd. */
+    /** Marks the stop as completed and also marks the underlying order as delivered. */
     public void markCompleted() {
         this.completed = true;
         this.order.markDelivered();
     }
 
-    /** Helper: ETA als leesbare HH:mm string. */
+    /** Helper: ETA formatted as a readable HH:mm string. */
     public String formattedEta() {
         return String.format("%02d:%02d", eta / 60, eta % 60);
     }

@@ -1,10 +1,10 @@
 package nl.vintageforlife.poc.domain;
 
 /**
- * Simpele lat/lon locatie. Gebruikt voor depot, voertuig startpunt en
- * orderadressen. In de PoC rekenen we hemelsbreed (haversine); in productie
- * zou GraphHopper hier de echte rijafstanden leveren (zie TO hoofdstuk
- * "Gekozen algoritme").
+ * Simple lat/lon location. Used for the depot, the vehicle start point and
+ * order addresses. In the PoC we compute distance as the crow flies
+ * (haversine); in production GraphHopper would provide the real driving
+ * distances (see the technical design, chapter "Chosen algorithm").
  */
 public class Location {
     private final String address;
@@ -21,7 +21,7 @@ public class Location {
     public double getLat() { return lat; }
     public double getLon() { return lon; }
 
-    /** Haversine afstand in kilometers tussen deze locatie en {@code other}. */
+    /** Haversine distance in kilometers between this location and {@code other}. */
     public double distanceKm(Location other) {
         final double R = 6371.0;
         double dLat = Math.toRadians(other.lat - this.lat);

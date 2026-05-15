@@ -1,26 +1,35 @@
 package nl.vintageforlife.poc.domain;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
- * Het volledige bezorgplan voor een rit. Bevat voertuig, een driver,
- * een assistent (bijrijder), stops, verwachte starttijd en status.
+ * The complete delivery plan for a trip. Contains the vehicle, a driver,
+ * an assistant, stops, expected start time and status.
  *
- * Bij Vintage for Life rijdt er altijd een tweetal mee: de driver bestuurt
- * het busje en de assistent helpt bij in- en uitladen / installatie.
+ * At Vintage for Life every delivery is done by a pair: the driver operates
+ * the van and the assistant helps with loading/unloading and installation.
  */
 public class Route {
 
     public enum Status { CONCEPT, GOEDGEKEURD, IN_UITVOERING, AFGEROND }
+
+    /** Dutch day formatter, e.g. "vr 15 mei 2026". */
+    private static final DateTimeFormatter DAY_FORMAT =
+            DateTimeFormatter.ofPattern("EEE d MMMM yyyy", new Locale("nl"));
 
     private final String routeId;
     private final Vehicle vehicle;
     private Deliverer driver;
     private Deliverer assistant;
     private final List<Stop> stops = new ArrayList<>();
-    /** Geplande starttijd in minuten sinds 00:00. */
+    /** Planned start time in minutes since 00:00. */
     private int plannedStart;
+    /** Day offset relative to today (0 = today, 1 = tomorrow, ...). */
+    private int dayOffset;
     private double totalDistanceKm;
     private Status status = Status.CONCEPT;
 
@@ -39,7 +48,7 @@ public class Route {
     public Deliverer getAssistant() { return assistant; }
     public void setAssistant(Deliverer assistant) { this.assistant = assistant; }
 
-    /** Compatibele helper: het tweetal als lijst (driver eerst, dan assistant). */
+    /** Compatibility helper: the pair as a list (driver first, then assistant). */
     public List<Deliverer> getCrew() {
         List<Deliverer> crew = new ArrayList<>();
         if (driver != null) crew.add(driver);
@@ -49,6 +58,8 @@ public class Route {
 
     public List<Stop> getStops() { return stops; }
     public int getPlannedStart() { return plannedStart; }
+    public int getDayOffset() { return dayOffset; }
+    public void setDayOffset(int dayOffset) { this.dayOffset = dayOffset; }
     public double getTotalDistanceKm() { return totalDistanceKm; }
     public void setTotalDistanceKm(double km) { this.totalDistanceKm = km; }
     public Status getStatus() { return status; }
@@ -62,6 +73,16 @@ public class Route {
 
     public String formattedStart() {
         return String.format("%02d:%02d", plannedStart / 60, plannedStart % 60);
+    }
+
+    /** Planned date for this route, relative to today's date. */
+    public LocalDate getPlannedDate() {
+        return LocalDate.now().plusDays(dayOffset);
+    }
+
+    /** Human-readable date label, e.g. "vr 15 mei 2026". */
+    public String formattedDay() {
+        return DAY_FORMAT.format(getPlannedDate());
     }
 
     @Override

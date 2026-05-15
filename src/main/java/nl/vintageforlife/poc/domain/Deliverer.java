@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Een medewerker uit het bezorgteam. Kan als driver (chauffeur) of als
- * assistent (bijrijder) aan een route worden gekoppeld. Bij Vintage for Life
- * rijdt er altijd een tweetal mee: de driver bestuurt het busje en de
- * assistent helpt met sjouwen en installatie.
+ * A member of the delivery crew. Can be linked to a route as a driver or as
+ * an assistant. At Vintage for Life every delivery is done by a pair: the
+ * driver operates the van and the assistant helps with carrying and
+ * installation.
  */
 public class Deliverer {
     private final String delivererId;
@@ -23,13 +23,13 @@ public class Deliverer {
     public String getDelivererId() { return delivererId; }
     public String getName() { return name; }
 
-    /** Alle routes waar deze persoon als driver op staat. */
+    /** All routes on which this person is the driver. */
     public List<Route> getDrivenRoutes() { return drivenRoutes; }
 
-    /** Alle routes waar deze persoon als assistent op staat. */
+    /** All routes on which this person is the assistant. */
     public List<Route> getAssistedRoutes() { return assistedRoutes; }
 
-    /** Alle routes waar deze persoon bij betrokken is (driver of assistent). */
+    /** All routes this person is involved in (as driver or assistant). */
     public List<Route> getAssignedRoutes() {
         List<Route> all = new ArrayList<>(drivenRoutes);
         for (Route r : assistedRoutes) {
@@ -38,13 +38,13 @@ public class Deliverer {
         return all;
     }
 
-    /** Koppel deze persoon als driver aan de route. */
+    /** Assigns this person to the route as the driver. */
     public void assignAsDriver(Route route) {
         if (!drivenRoutes.contains(route)) drivenRoutes.add(route);
         route.setDriver(this);
     }
 
-    /** Koppel deze persoon als assistent aan de route. */
+    /** Assigns this person to the route as the assistant. */
     public void assignAsAssistant(Route route) {
         if (!assistedRoutes.contains(route)) assistedRoutes.add(route);
         route.setAssistant(this);

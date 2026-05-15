@@ -9,23 +9,20 @@ import nl.vintageforlife.poc.logic.RouteManagement;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 /**
- * Gebruikersinterface voor het bezorgteam. Bij Vintage for Life rijdt er
- * altijd een tweetal mee, dus de gebruiker kiest hier zowel de driver als
- * de assistent. Op basis van die selectie worden de toegewezen routes
- * getoond en kunnen stops afgerond worden. Bij elke afronding werkt
- * RouteExecution de ETA's van de volgende stops bij.
+ * User interface for the delivery team. The user picks themselves from the
+ * dropdown and then sees every route they are assigned to, regardless of
+ * whether they are the driver or the assistant on that route. The partner
+ * is shown in the status bar. On every stop completion RouteExecution
+ * updates the ETAs of the following stops.
  */
 public class DelivererUI extends JFrame {
 
     private final RouteManagement routeManagement;
     private final RouteExecution routeExecution = new RouteExecution();
 
-    private final JComboBox<Deliverer> driverBox;
-    private final JComboBox<Deliverer> assistantBox;
+    private final JComboBox<Deliverer> delivererBox;
     private final JComboBox<Route> routeBox;
     private final DefaultTableModel stopModel;
     private final JTable stopTable;
@@ -38,28 +35,21 @@ public class DelivererUI extends JFrame {
         setSize(800, 500);
         setLayout(new BorderLayout(8, 8));
 
-        // ------- Bovenbalk: driver + assistent + route selectie -------
-        driverBox = new JComboBox<>(routeManagement.getDeliverers().toArray(new Deliverer[0]));
-        driverBox.addActionListener(e -> refreshRoutes());
-
-        assistantBox = new JComboBox<>(routeManagement.getDeliverers().toArray(new Deliverer[0]));
-        // Standaard de tweede persoon als assistent zodat het paar niet gelijk is.
-        if (assistantBox.getItemCount() > 1) assistantBox.setSelectedIndex(1);
-        assistantBox.addActionListener(e -> refreshRoutes());
+        // ------- Top bar: crew member + route selection -------
+        delivererBox = new JComboBox<>(routeManagement.getDeliverers().toArray(new Deliverer[0]));
+        delivererBox.addActionListener(e -> refreshRoutes());
 
         routeBox = new JComboBox<>();
         routeBox.addActionListener(e -> refreshStops());
 
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        top.add(new JLabel("Driver:"));
-        top.add(driverBox);
-        top.add(new JLabel("Assistent:"));
-        top.add(assistantBox);
+        top.add(new JLabel("Medewerker:"));
+        top.add(delivererBox);
         top.add(new JLabel("Route:"));
         top.add(routeBox);
         add(top, BorderLayout.NORTH);
 
-        // ------- Stops tabel -------
+        // ------- Stops table -------
         stopModel = new DefaultTableModel(
                 new String[]{"#", "ETA", "Order", "Adres", "Tijdvenster", "Status"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -69,7 +59,7 @@ public class DelivererUI extends JFrame {
         scroll.setBorder(BorderFactory.createTitledBorder("Stops"));
         add(scroll, BorderLayout.CENTER);
 
-        // ------- Onderbalk: knoppen + status -------
+        // ------- Bottom bar: buttons + status -------
         statusLabel = new JLabel(" ");
         JButton startBtn = new JButton("Route starten");
         startBtn.addActionListener(e -> startRoute());
@@ -87,32 +77,26 @@ public class DelivererUI extends JFrame {
         refreshRoutes();
     }
 
-    /** Aanroep wanneer er nieuwe routes zijn (vanuit PlannerUI). */
+    /** Called when new routes are available (from PlannerUI). */
     public void onRoutesChanged() {
         refreshRoutes();
     }
 
     /**
-     * Vult de routelijst met alle routes waar de geselecteerde driver
-     * of de geselecteerde assistent aan toegewezen is. Zo zien beide
-     * teamleden direct dezelfde route(s) staan.
+     * Fills the route list with every route the selected crew member is
+     * assigned to, no matter whether they are the driver or the assistant.
      */
     private void refreshRoutes() {
-        Deliverer driver = (Deliverer) driverBox.getSelectedItem();
-        Deliverer assistant = (Deliverer) assistantBox.getSelectedItem();
+        Deliverer d = (Deliverer) delivererBox.getSelectedItem();
         routeBox.removeAllItems();
-
-        Set<Route> assigned = new LinkedHashSet<>();
-        if (driver != null) assigned.addAll(driver.getAssignedRoutes());
-        if (assistant != null) assigned.addAll(assistant.getAssignedRoutes());
-
-        for (Route r : assigned) {
+        if (d == null) return;
+        for (Route r : d.getAssignedRoutes()) {
             routeBox.addItem(r);
         }
         refreshStops();
     }
 
-    /** Werkt de stoptabel + statusregel bij voor de geselecteerde route. */
+    /** Refreshes the stop table and the status line for the selected route. */
     private void refreshStops() {
         stopModel.setRowCount(0);
         Route r = (Route) routeBox.getSelectedItem();
@@ -133,20 +117,17 @@ public class DelivererUI extends JFrame {
         }
         String driverName  = r.getDriver()    != null ? r.getDriver().getName()    : "-";
         String assistName  = r.getAssistant() != null ? r.getAssistant().getName() : "-";
-        statusLabel.setText("Route status: " + r.getStatus()
+        statusLabel.setText("Dag: " + r.formattedDay()
+                + "   |   Status: " + r.getStatus()
                 + "   |   Driver: " + driverName
                 + "   |   Assistent: " + assistName
                 + "   |   Afstand: " + String.format("%.1f", r.getTotalDistanceKm()) + " km ");
     }
 
-    /**
-     * Start de geselecteerde route. Vereist dat zowel driver als assistent
-     * gekozen zijn en dat het twee verschillende personen zijn.
-     */
+    /** Starts the selected route (only if it was approved by the planner). */
     private void startRoute() {
         Route r = (Route) routeBox.getSelectedItem();
         if (r == null) return;
-        if (!validateCrewSelection()) return;
         if (r.getStatus() != Route.Status.GOEDGEKEURD) {
             JOptionPane.showMessageDialog(this,
                     "Route is nog niet goedgekeurd door de planner.",
@@ -158,13 +139,12 @@ public class DelivererUI extends JFrame {
     }
 
     /**
-     * Rondt de in de tabel geselecteerde stop af. De ETA's van de volgende
-     * stops worden door RouteExecution opnieuw berekend.
+     * Completes the stop currently selected in the table. RouteExecution
+     * recalculates the ETAs of the following stops.
      */
     private void completeSelectedStop() {
         Route r = (Route) routeBox.getSelectedItem();
         if (r == null) return;
-        if (!validateCrewSelection()) return;
         int row = stopTable.getSelectedRow();
         if (row < 0) {
             JOptionPane.showMessageDialog(this, "Selecteer een stop.");
@@ -178,33 +158,14 @@ public class DelivererUI extends JFrame {
         if (r.getStatus() == Route.Status.GOEDGEKEURD) {
             routeExecution.startRoute(r);
         }
-        // Voor de PoC nemen we de geplande ETA als "werkelijke" afrondtijd.
-        // In productie zou hier de echte tijdstempel uit het apparaat komen.
+        // For the PoC we take the planned ETA as the "actual" completion time.
+        // In production this would be the real timestamp from the device.
         int actual = s.getEta() + s.getOrder().getServiceMinutes();
         routeExecution.completeStop(r, s, actual);
         refreshStops();
     }
 
-    /** Controleert dat driver en assistent gekozen en verschillend zijn. */
-    private boolean validateCrewSelection() {
-        Deliverer driver = (Deliverer) driverBox.getSelectedItem();
-        Deliverer assistant = (Deliverer) assistantBox.getSelectedItem();
-        if (driver == null || assistant == null) {
-            JOptionPane.showMessageDialog(this,
-                    "Kies zowel een driver als een assistent.",
-                    "Niet mogelijk", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        if (driver == assistant) {
-            JOptionPane.showMessageDialog(this,
-                    "Driver en assistent moeten verschillende personen zijn.",
-                    "Niet mogelijk", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        return true;
-    }
-
-    /** Helper: minuten sinds 00:00 -> HH:mm. */
+    /** Helper: minutes since 00:00 -> HH:mm. */
     private String formatTime(int minutes) {
         return String.format("%02d:%02d", minutes / 60, minutes % 60);
     }

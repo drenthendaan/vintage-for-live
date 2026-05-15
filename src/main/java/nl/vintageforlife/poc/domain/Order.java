@@ -1,17 +1,17 @@
 package nl.vintageforlife.poc.domain;
 
 /**
- * Een bestelling die bezorgd moet worden. Komt overeen met de Order-class uit
- * het klassendiagram. Tijdvenster en service-flag worden door het algoritme
- * gebruikt als constraints (UR-11, UR-21).
+ * An order that needs to be delivered. Matches the Order class from the
+ * class diagram. The time window and installation flag are used by the
+ * algorithm as constraints (UR-11, UR-21).
  */
 public class Order {
     private final String orderId;
     private final String customerId;
     private final Location address;
-    /** Start tijdvenster in minuten sinds 00:00 (bijv. 9:00 = 540). */
+    /** Start of the time window in minutes since 00:00 (e.g. 9:00 = 540). */
     private final int timeWindowStart;
-    /** Einde tijdvenster in minuten sinds 00:00. */
+    /** End of the time window in minutes since 00:00. */
     private final int timeWindowEnd;
     private final int weightKg;
     private final boolean requiresInstallation;
@@ -40,12 +40,12 @@ public class Order {
     public boolean isDelivered() { return delivered; }
     public void markDelivered() { this.delivered = true; }
 
-    /** Service tijd in minuten: 15 min normaal, 45 min met installatie (UR-21). */
+    /** Service time in minutes: 15 min standard, 45 min with installation (UR-21). */
     public int getServiceMinutes() {
         return requiresInstallation ? 45 : 15;
     }
 
-    /** Helper: minuten sinds 00:00 -> HH:mm. */
+    /** Helper: minutes since 00:00 -> HH:mm. */
     private String formatTime(int minutes) {
         return String.format("%02d:%02d", minutes / 60, minutes % 60);
     }

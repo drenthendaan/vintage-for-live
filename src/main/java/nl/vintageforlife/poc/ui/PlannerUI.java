@@ -12,10 +12,10 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Gebruikersinterface voor de planner (zie klassendiagram en TO hoofdstuk
- * "Verbinding met de Requirements"). Hier kan de planner orders aanmaken,
- * routes genereren en routes goedkeuren. Per route is in de tabel zichtbaar
- * welk tweetal (driver + assistent) is toegewezen.
+ * User interface for the planner (see the class diagram and the technical
+ * design, chapter "Link with the requirements"). Here the planner can add
+ * orders, generate routes and approve routes. For each route the table
+ * shows which pair (driver + assistant) is assigned.
  */
 public class PlannerUI extends JFrame {
 
@@ -34,7 +34,7 @@ public class PlannerUI extends JFrame {
         setSize(1000, 600);
         setLayout(new BorderLayout(8, 8));
 
-        // ------- Orders tabel -------
+        // ------- Orders table -------
         orderModel = new DefaultTableModel(
                 new String[]{"Order", "Klant", "Adres", "Tijdvenster", "Kg", "Installatie"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -43,9 +43,9 @@ public class PlannerUI extends JFrame {
         JScrollPane orderScroll = new JScrollPane(orderTable);
         orderScroll.setBorder(BorderFactory.createTitledBorder("Orders"));
 
-        // ------- Routes tabel -------
+        // ------- Routes table -------
         routeModel = new DefaultTableModel(
-                new String[]{"Route", "Voertuig", "Driver", "Assistent",
+                new String[]{"Route", "Dag", "Voertuig", "Driver", "Assistent",
                              "Stops", "Belading (kg)", "Afstand (km)", "Status"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -57,7 +57,7 @@ public class PlannerUI extends JFrame {
         split.setResizeWeight(0.5);
         add(split, BorderLayout.CENTER);
 
-        // ------- Knoppen -------
+        // ------- Buttons -------
         JButton addOrderBtn = new JButton("Order toevoegen");
         addOrderBtn.addActionListener(e -> showAddOrderDialog());
 
@@ -80,7 +80,7 @@ public class PlannerUI extends JFrame {
         refresh();
     }
 
-    /** Tekent beide tabellen opnieuw op basis van de huidige RouteManagement state. */
+    /** Redraws both tables based on the current RouteManagement state. */
     public void refresh() {
         orderModel.setRowCount(0);
         for (Order o : routeManagement.getOrders()) {
@@ -96,7 +96,8 @@ public class PlannerUI extends JFrame {
             String driverName  = r.getDriver()    != null ? r.getDriver().getName()    : "-";
             String assistName  = r.getAssistant() != null ? r.getAssistant().getName() : "-";
             routeModel.addRow(new Object[]{
-                    r.getRouteId(), r.getVehicle().getVehicleId(),
+                    r.getRouteId(), r.formattedDay(),
+                    r.getVehicle().getVehicleId(),
                     driverName, assistName,
                     r.getStops().size(), r.totalWeightKg(),
                     String.format("%.1f", r.getTotalDistanceKm()),
@@ -105,7 +106,7 @@ public class PlannerUI extends JFrame {
         }
     }
 
-    /** Roept het algoritme aan en geeft het bezorgportaal een seintje. */
+    /** Runs the algorithm and notifies the deliverer portal. */
     private void generateRoutes() {
         try {
             List<Route> created = routeManagement.generateRoutes();
@@ -121,7 +122,7 @@ public class PlannerUI extends JFrame {
         }
     }
 
-    /** Keurt de in de tabel geselecteerde route goed. */
+    /** Approves the route currently selected in the table. */
     private void approveSelectedRoute() {
         int row = routeTable.getSelectedRow();
         if (row < 0) {
@@ -134,7 +135,7 @@ public class PlannerUI extends JFrame {
         if (onRoutesChanged != null) onRoutesChanged.run();
     }
 
-    /** Toont een tekstueel overzicht van de geselecteerde route met alle stops. */
+    /** Shows a textual overview of the selected route, including all stops. */
     private void showRouteDetails() {
         int row = routeTable.getSelectedRow();
         if (row < 0) {
@@ -147,6 +148,7 @@ public class PlannerUI extends JFrame {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Route ").append(route.getRouteId()).append("\n");
+        sb.append("Dag: ").append(route.formattedDay()).append("\n");
         sb.append("Voertuig: ").append(route.getVehicle()).append("\n");
         sb.append("Driver: ").append(driverName).append("\n");
         sb.append("Assistent: ").append(assistName).append("\n");
@@ -164,7 +166,7 @@ public class PlannerUI extends JFrame {
                 "Route details", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    /** Dialog om handmatig een nieuwe order in te voeren (handig voor demo's). */
+    /** Dialog for adding a new order by hand (handy for demos). */
     private void showAddOrderDialog() {
         JTextField idField = new JTextField("ORD-" + (routeManagement.getOrders().size() + 1));
         JTextField customerField = new JTextField("KLANT-X");
@@ -210,13 +212,13 @@ public class PlannerUI extends JFrame {
         }
     }
 
-    /** Helper: HH:mm -> minuten sinds 00:00. */
+    /** Helper: HH:mm -> minutes since 00:00. */
     private int parseTime(String s) {
         String[] parts = s.split(":");
         return Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);
     }
 
-    /** Helper: minuten sinds 00:00 -> HH:mm. */
+    /** Helper: minutes since 00:00 -> HH:mm. */
     private String formatTime(int minutes) {
         return String.format("%02d:%02d", minutes / 60, minutes % 60);
     }

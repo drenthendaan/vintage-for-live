@@ -6,16 +6,16 @@ import nl.vintageforlife.poc.domain.Stop;
 import java.time.LocalTime;
 
 /**
- * Operationele uitvoering van een route. Het bezorgteam start de route,
- * rondt stops af en het systeem herberekent de ETA's voor de resterende
- * stops. Komt overeen met de RouteExecution-class uit het klassendiagram.
+ * Operational execution of a route. The delivery team starts the route,
+ * completes stops, and the system recalculates the ETAs for the remaining
+ * stops. Matches the RouteExecution class from the class diagram.
  */
 public class RouteExecution {
 
-    /** Gemiddelde rijsnelheid voor de PoC (km/u); in productie GraphHopper. */
+    /** Average driving speed for the PoC (km/h); in production GraphHopper. */
     private static final double AVG_SPEED_KMH = 50.0;
 
-    /** Zet een goedgekeurde route op IN_UITVOERING. */
+    /** Moves an approved route to status IN_UITVOERING (in progress). */
     public void startRoute(Route route) {
         if (route.getStatus() == Route.Status.GOEDGEKEURD) {
             route.setStatus(Route.Status.IN_UITVOERING);
@@ -23,14 +23,14 @@ public class RouteExecution {
     }
 
     /**
-     * Rondt een stop af op het opgegeven werkelijke tijdstip en werkt de
-     * ETA bij voor alle volgende stops in de route. Als alle stops klaar
-     * zijn, krijgt de route status AFGEROND.
+     * Completes a stop at the given actual completion time and updates the
+     * ETAs for all following stops in the route. When every stop is done,
+     * the route is marked as AFGEROND (finished).
      */
     public void completeStop(Route route, Stop stop, int actualCompletionMinutes) {
         stop.markCompleted();
 
-        // Loop alle stops na de afgeronde stop door en herbereken ETA's.
+        // Walk through all stops after the completed one and recalculate ETAs.
         int cursor = actualCompletionMinutes;
         Stop prev = stop;
         boolean past = false;
@@ -43,7 +43,7 @@ public class RouteExecution {
             int travel = (int) Math.round(km / AVG_SPEED_KMH * 60.0);
             int eta = cursor + travel;
             if (eta < s.getOrder().getTimeWindowStart()) {
-                eta = s.getOrder().getTimeWindowStart();  // wachten op tijdvenster
+                eta = s.getOrder().getTimeWindowStart();  // wait for the time window
             }
             s.setEta(eta);
             cursor = eta + s.getOrder().getServiceMinutes();
@@ -54,7 +54,7 @@ public class RouteExecution {
         if (allDone) route.setStatus(Route.Status.AFGEROND);
     }
 
-    /** Helper: huidige tijd in minuten sinds 00:00 (handig voor de UI). */
+    /** Helper: current time in minutes since 00:00 (useful for the UI). */
     public static int nowMinutes() {
         LocalTime t = LocalTime.now();
         return t.getHour() * 60 + t.getMinute();
