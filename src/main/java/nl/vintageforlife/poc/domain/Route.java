@@ -46,7 +46,7 @@ public class Route {
 
     public List<Stop> getStops() { return stops; }
     public int getPlannedStart() { return plannedStart; }
-    public void setPlannedStart(int plannedStart) { this.plannedStart = plannedStart; };
+    public void setPlannedStart(int plannedStart) { this.plannedStart = plannedStart; }
     public LocalDate getPlannedDate() { return plannedDate; }
     public void setPlannedDate(LocalDate plannedDate) { this.plannedDate = plannedDate; }
     public double getTotalDistanceKm() { return totalDistanceKm; }
