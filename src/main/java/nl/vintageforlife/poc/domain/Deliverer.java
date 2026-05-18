@@ -31,11 +31,12 @@ public class Deliverer {
 
     /** All routes this person is involved in (as driver or assistant). */
     public List<Route> getAssignedRoutes() {
-        List<Route> all = new ArrayList<>(drivenRoutes);
+        List<Route> assignedRoutes = new ArrayList<>(drivenRoutes);
         for (Route r : assistedRoutes) {
-            if (!all.contains(r)) all.add(r);
+            if (!assignedRoutes.contains(r)) assignedRoutes.add(r);
         }
-        return all;
+
+        return assignedRoutes;
     }
 
     /** Assigns this person to the route as the driver. */

@@ -54,13 +54,12 @@ public class DeliveryAlgorithm {
     /** Result of a route calculation (all trips + any unassigned orders). */
     public static class RoutingResult {
         public final List<PlannedRoute> plannedRoutes;
-        public final List<Order> unassigned;
+        public final List<Order> unassignedOrders;
         public final double totalDistanceKm;
 
-        public RoutingResult(List<PlannedRoute> plannedRoutes,
-                             List<Order> unassigned, double totalDistanceKm) {
+        public RoutingResult(List<PlannedRoute> plannedRoutes, List<Order> unassignedOrders, double totalDistanceKm) {
             this.plannedRoutes = plannedRoutes;
-            this.unassigned = unassigned;
+            this.unassignedOrders = unassignedOrders;
             this.totalDistanceKm = totalDistanceKm;
         }
     }
@@ -70,24 +69,23 @@ public class DeliveryAlgorithm {
      * The result is, per vehicle, a list of orders in the optimal sequence,
      * plus any orders that could not be assigned.
      */
-    public RoutingResult solve(List<Vehicle> vehicles, List<Order> orders,
-                               Location depot, int dayStartMinutes) {
+    public RoutingResult solve(List<Vehicle> vehicles, List<Order> orders, Location depot, int dayStartMinutes) {
 
         // 1. Build a cost matrix with haversine distances between all locations.
-        Map<String, Location> locById = new HashMap<>();
-        locById.put(DEPOT_ID, depot);
-        for (Order o : orders) {
-            locById.put(o.getOrderId(), o.getAddress());
+        Map<String, Location> locationById = new HashMap<>();
+        locationById.put(DEPOT_ID, depot);
+        for (Order order: orders) {
+            locationById.put(order.getOrderId(), order.getAddress());
         }
 
-        VehicleRoutingTransportCostsMatrix.Builder matrixBuilder =
-                VehicleRoutingTransportCostsMatrix.Builder.newInstance(true);
-        List<String> ids = new ArrayList<>(locById.keySet());
+        VehicleRoutingTransportCostsMatrix.Builder matrixBuilder = VehicleRoutingTransportCostsMatrix.Builder.newInstance(true);
+
+        List<String> ids = new ArrayList<>(locationById.keySet());
         for (int i = 0; i < ids.size(); i++) {
             for (int j = i + 1; j < ids.size(); j++) {
                 String a = ids.get(i);
                 String b = ids.get(j);
-                double km = locById.get(a).distanceKm(locById.get(b));
+                double km = locationById.get(a).distanceKm(locationById.get(b));
                 double minutes = (km / AVG_SPEED_KMH) * 60.0;
                 matrixBuilder.addTransportDistance(a, b, km);
                 matrixBuilder.addTransportTime(a, b, minutes);
@@ -100,85 +98,86 @@ public class DeliveryAlgorithm {
         vrpBuilder.setRoutingCost(costs);
 
         Map<String, Vehicle> vehicleById = new HashMap<>();
-        for (Vehicle v : vehicles) {
-            vehicleById.put(v.getVehicleId(), v);
-            VehicleType type = VehicleTypeImpl.Builder.newInstance("type-" + v.getVehicleId())
-                    .addCapacityDimension(0, v.getCapacityKg())
+        for (Vehicle vehicle: vehicles) {
+            vehicleById.put(vehicle.getVehicleId(), vehicle);
+            VehicleType type = VehicleTypeImpl.Builder.newInstance("type-" + vehicle.getVehicleId())
+                    .addCapacityDimension(0, vehicle.getCapacityKg())
                     .build();
-            com.graphhopper.jsprit.core.problem.Location depotLoc =
+            com.graphhopper.jsprit.core.problem.Location depotLocation =
                     com.graphhopper.jsprit.core.problem.Location.Builder.newInstance()
                             .setId(DEPOT_ID).build();
-            VehicleImpl jVehicle = VehicleImpl.Builder.newInstance(v.getVehicleId())
-                    .setStartLocation(depotLoc)
+            VehicleImpl jVehicle = VehicleImpl.Builder.newInstance(vehicle.getVehicleId())
+                    .setStartLocation(depotLocation)
                     .setType(type)
                     .setEarliestStart(dayStartMinutes)
-                    .setLatestArrival(dayStartMinutes + 8 * 60)  // 8-hour workday (UR-10)
+                    .setLatestArrival(dayStartMinutes + 8 * 60)  // 8-hour workday
                     .build();
             vrpBuilder.addVehicle(jVehicle);
         }
 
         Map<String, Order> orderById = new HashMap<>();
-        for (Order o : orders) {
-            orderById.put(o.getOrderId(), o);
-            com.graphhopper.jsprit.core.problem.Location stopLoc =
+        for (Order order: orders) {
+            orderById.put(order.getOrderId(), order);
+            com.graphhopper.jsprit.core.problem.Location stopLocation =
                     com.graphhopper.jsprit.core.problem.Location.Builder.newInstance()
-                            .setId(o.getOrderId()).build();
-            Service service = Service.Builder.newInstance(o.getOrderId())
-                    .addSizeDimension(0, o.getWeightKg())   // FR-8 capacity
-                    .setLocation(stopLoc)
-                    .setServiceTime(o.getServiceMinutes()) // UR-21
-                    .setTimeWindow(TimeWindow.newInstance( // UR-11
-                            o.getTimeWindowStart(), o.getTimeWindowEnd()))
+                            .setId(order.getOrderId()).build();
+            Service service = Service.Builder.newInstance(order.getOrderId())
+                    .addSizeDimension(0, order.getWeightKg())
+                    .setLocation(stopLocation)
+                    .setServiceTime(order.getServiceMinutes())
+                    .setTimeWindow(TimeWindow.newInstance(
+                            order.getTimeWindowStart(), order.getTimeWindowEnd()))
                     .build();
             vrpBuilder.addJob(service);
         }
 
         VehicleRoutingProblem vrp = vrpBuilder.build();
 
-        // 3. Solve with Jsprit (ruin & recreate). 200 iterations is plenty
-        //    for the PoC and stays well within UR-24 (route within 1 min).
-        VehicleRoutingAlgorithm algo = Jsprit.createAlgorithm(vrp);
-        algo.setMaxIterations(200);
-        VehicleRoutingProblemSolution best = Solutions.bestOf(algo.searchSolutions());
+        // 3. Solve with Jsprit (ruin & recreate). 200 iterations is plenty for the PoC.
+        VehicleRoutingAlgorithm algorithm = Jsprit.createAlgorithm(vrp);
+        algorithm.setMaxIterations(200);
+        VehicleRoutingProblemSolution best = Solutions.bestOf(algorithm.searchSolutions());
 
         // 4. Translate the Jsprit result back into our domain objects.
-        List<PlannedRoute> planned = new ArrayList<>();
+        List<PlannedRoute> plannedRoutes = new ArrayList<>();
         for (VehicleRoute jRoute : best.getRoutes()) {
             if (jRoute.getActivities().isEmpty()) continue;
-            Vehicle v = vehicleById.get(jRoute.getVehicle().getId());
+            Vehicle vehicle = vehicleById.get(jRoute.getVehicle().getId());
             List<Order> orderedOrders = new ArrayList<>();
-            for (TourActivity act : jRoute.getActivities()) {
-                String locId = act.getLocation().getId();
-                Order order = orderById.get(locId);
+
+            for (TourActivity activity: jRoute.getActivities()) {
+                String locationId = activity.getLocation().getId();
+                Order order = orderById.get(locationId);
                 if (order != null) orderedOrders.add(order);
             }
-            double km = routeDistanceKm(jRoute, locById);
-            planned.add(new PlannedRoute(v, orderedOrders, km));
+
+            double km = routeDistanceKm(jRoute, locationById);
+            plannedRoutes.add(new PlannedRoute(vehicle, orderedOrders, km));
         }
 
-        List<Order> unassigned = new ArrayList<>();
-        for (com.graphhopper.jsprit.core.problem.job.Job j : best.getUnassignedJobs()) {
-            Order o = orderById.get(j.getId());
-            if (o != null) unassigned.add(o);
+        List<Order> unassignedOrders = new ArrayList<>();
+        for (com.graphhopper.jsprit.core.problem.job.Job job: best.getUnassignedJobs()) {
+            Order order = orderById.get(job.getId());
+            if (order != null) unassignedOrders.add(order);
         }
 
-        double total = planned.stream().mapToDouble(r -> r.distanceKm).sum();
-        return new RoutingResult(planned, unassigned, total);
+        double total = plannedRoutes.stream().mapToDouble(plannedRoute -> plannedRoute.distanceKm).sum();
+        return new RoutingResult(plannedRoutes, unassignedOrders, total);
     }
 
     /** Helper: total distance from the depot, along all activities, back to the depot. */
-    private double routeDistanceKm(VehicleRoute jRoute, Map<String, Location> locById) {
+    private double routeDistanceKm(VehicleRoute jRoute, Map<String, Location> locationById) {
         double km = 0;
-        Location prev = locById.get(DEPOT_ID);
-        for (TourActivity act : jRoute.getActivities()) {
-            Location curr = locById.get(act.getLocation().getId());
-            if (curr != null) {
-                km += prev.distanceKm(curr);
-                prev = curr;
+        Location prev = locationById.get(DEPOT_ID);
+        for (TourActivity activity : jRoute.getActivities()) {
+            Location current = locationById.get(activity.getLocation().getId());
+            if (current != null) {
+                km += prev.distanceKm(current);
+                prev = current;
             }
         }
         // Return trip to the depot.
-        km += prev.distanceKm(locById.get(DEPOT_ID));
+        km += prev.distanceKm(locationById.get(DEPOT_ID));
         return km;
     }
 }

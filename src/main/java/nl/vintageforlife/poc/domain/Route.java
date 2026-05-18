@@ -17,10 +17,6 @@ public class Route {
 
     public enum Status { CONCEPT, GOEDGEKEURD, IN_UITVOERING, AFGEROND }
 
-    /** Dutch day formatter, e.g. "vr 15 mei 2026". */
-    private static final DateTimeFormatter DAY_FORMAT =
-            DateTimeFormatter.ofPattern("EEE d MMMM yyyy", new Locale("nl"));
-
     private final String routeId;
     private final Vehicle vehicle;
     private Deliverer driver;
@@ -48,16 +44,9 @@ public class Route {
     public Deliverer getAssistant() { return assistant; }
     public void setAssistant(Deliverer assistant) { this.assistant = assistant; }
 
-    /** Compatibility helper: the pair as a list (driver first, then assistant). */
-    public List<Deliverer> getCrew() {
-        List<Deliverer> crew = new ArrayList<>();
-        if (driver != null) crew.add(driver);
-        if (assistant != null) crew.add(assistant);
-        return crew;
-    }
-
     public List<Stop> getStops() { return stops; }
     public int getPlannedStart() { return plannedStart; }
+    public void setPlannedStart(int plannedStart) { this.plannedStart = plannedStart; }
     public LocalDate getPlannedDate() { return plannedDate; }
     public void setPlannedDate(LocalDate plannedDate) { this.plannedDate = plannedDate; }
     public double getTotalDistanceKm() { return totalDistanceKm; }
@@ -68,7 +57,7 @@ public class Route {
     public void addStop(Stop stop) { stops.add(stop); }
 
     public int totalWeightKg() {
-        return stops.stream().mapToInt(s -> s.getOrder().getWeightKg()).sum();
+        return stops.stream().mapToInt(stop -> stop.getOrder().getWeightKg()).sum();
     }
 
     public String formattedStart() {
@@ -77,7 +66,8 @@ public class Route {
 
     /** Human-readable date label, e.g. "vr 15 mei 2026". */
     public String formattedDay() {
-        return DAY_FORMAT.format(plannedDate);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE d MMMM yyyy", new Locale("nl"));
+        return formatter.format(plannedDate);
     }
 
     @Override
